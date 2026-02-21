@@ -1,0 +1,36 @@
+<div class="page-layout">
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">SQLens</span>
+      <span class="tagline">SQL Query Visualizer</span>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <aside class="input-panel">
+      <app-sql-input
+        [loading]="isLoading()"
+        (analyze)="onAnalyze($event)"
+      />
+    </aside>
+
+    <section class="diagram-panel">
+      @if (isLoading()) {
+        <div class="state-placeholder">
+          <mat-spinner diameter="48" />
+          <p>Analyzing query…</p>
+        </div>
+      } @else if (diagram()) {
+        <app-diagram-canvas [diagram]="diagram()" />
+      } @else if (error()) {
+        <app-error-display [error]="error()!" />
+      } @else {
+        <div class="state-placeholder empty">
+          <mat-icon>account_tree</mat-icon>
+          <p>Enter a SQL query and click <strong>Analyze</strong> to visualize its structure</p>
+          <code class="example">SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id</code>
+        </div>
+      }
+    </section>
+  </div>
+</div>

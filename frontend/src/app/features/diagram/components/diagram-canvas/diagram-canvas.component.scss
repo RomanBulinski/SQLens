@@ -1,0 +1,49 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.zoom-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.canvas-el {
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // JointJS generated elements
+  ::ng-deep {
+    .joint-paper {
+      display: block;
+    }
+
+    .joint-element .joint-port-body {
+      cursor: default;
+    }
+  }
+}

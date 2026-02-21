@@ -1,0 +1,47 @@
+.sql-input-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.panel-title {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sql-field {
+  width: 100%;
+  flex: 1;
+
+  textarea {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 110px;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: #94a3b8;
+  }
+}

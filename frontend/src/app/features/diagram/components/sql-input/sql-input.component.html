@@ -1,0 +1,42 @@
+<div class="sql-input-container">
+  <h2 class="panel-title">SQL Query</h2>
+
+  <mat-form-field appearance="outline" class="sql-field">
+    <mat-label>Enter SQL query</mat-label>
+    <textarea
+      matInput
+      [formControl]="sqlControl"
+      [maxlength]="maxLength"
+      rows="14"
+      placeholder="SELECT *
+FROM orders o
+  JOIN customers c ON o.customer_id = c.id
+  JOIN products p ON o.product_id = p.id"
+      (keydown)="onKeydown($event)"
+    ></textarea>
+    <mat-hint align="end">{{ charCount | number }} / {{ maxLength | number }}</mat-hint>
+    @if (sqlControl.hasError('required') && sqlControl.touched) {
+      <mat-error>SQL query is required</mat-error>
+    }
+    @if (sqlControl.hasError('maxlength')) {
+      <mat-error>Query exceeds {{ maxLength | number }} characters</mat-error>
+    }
+  </mat-form-field>
+
+  <div class="actions">
+    <button
+      mat-raised-button
+      color="primary"
+      [disabled]="sqlControl.invalid || !sqlControl.value?.trim() || loading"
+      (click)="onAnalyze()"
+    >
+      @if (loading) {
+        <mat-spinner diameter="18" />
+        <span>Analyzing…</span>
+      } @else {
+        Analyze
+      }
+    </button>
+    <span class="hint">Ctrl+Enter to analyze</span>
+  </div>
+</div>
