@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.buulean</groupId>
+        <artifactId>sqlens</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sqlens-frontend</artifactId>
+    <packaging>jar</packaging>
+    <name>SQLens Frontend</name>
+    <description>Angular frontend — packaged as JAR, served by Spring Boot as static resources</description>
+
+    <build>
+        <plugins>
+
+            <!--
+                frontend-maven-plugin
+                ─────────────────────
+                Installs Node + npm LOCALLY inside target/ (no global install needed).
+                Runs: npm ci then ng build (production configuration)
+                Node binaries are NOT added to system PATH.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <npmVersion>${npm.version}</npmVersion>
+                    <!-- Angular project root (where package.json lives) -->
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <!-- Download Node binaries into target/ — not polluting system -->
+                    <installDirectory>${project.build.directory}</installDirectory>
+                </configuration>
+                <executions>
+
+                    <!-- Step 1: Download Node + npm into target/ -->
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                    </execution>
+
+                    <!-- Step 2: npm ci (reproducible install from package-lock.json) -->
+                    <execution>
+                        <id>npm-ci</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Step 3: ng build  configuration=production -->
+                    <execution>
+                        <id>npm-build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+
+            <!--
+                Copy Angular dist → target/classes/META-INF/resources/
+                ────────────────────────────────────────────────────────
+                Spring Boot automatically serves anything placed at
+                META-INF/resources/ on the classpath as static content.
+
+                Angular 17 (application builder) outputs to:
+                  dist/sqlens-frontend/browser/
+
+                If your angular.json uses a different outputPath,
+                update <directory> below accordingly.
+            -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-frontend-dist</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>
+                                ${project.build.outputDirectory}/META-INF/resources
+                            </outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>
+                                        ${project.basedir}/dist/sqlens-frontend/browser
+                                    </directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

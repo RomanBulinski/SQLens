@@ -1,0 +1,416 @@
+openapi: 3.0.3
+
+info:
+  title: SQLens API
+  description: |
+    REST API for the SQLens SQL Query Structure Visualizer.
+
+    SQLens parses SQL SELECT queries and returns a graph model (nodes + edges)
+    that the frontend renders as an interactive diagram. No database connection
+    is required — the API is a pure structural analyzer.
+  version: 1.0.0
+  contact:
+    name: Roman Bulinski
+  license:
+    name: Apache 2.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.sqlens.app
+    description: Production
+
+tags:
+  - name: SQL Analysis
+    description: Parse and analyze SQL query structure
+
+paths:
+  /api/sql/analyze:
+    post:
+      tags:
+        - SQL Analysis
+      summary: Analyze SQL query structure
+      description: |
+        Parses a SQL SELECT query and extracts its structural components
+        (tables, aliases, JOIN relationships, subqueries, CTEs) into a
+        graph model suitable for diagram rendering.
+
+        **Supported SQL:**
+        - SELECT statements with FROM clause
+        - INNER, LEFT, RIGHT, FULL OUTER, CROSS JOINs
+        - Table aliases (explicit and implicit)
+        - Subqueries in FROM clause
+        - Common Table Expressions (WITH clause)
+
+        **Not supported (Phase 1):**
+        - INSERT / UPDATE / DELETE statements
+        - Database-specific syntax (Oracle CONNECT BY, etc.)
+      operationId: analyzeSql
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SqlAnalyzeRequest'
+            examples:
+              simple_inner_join:
+                summary: Simple two-table INNER JOIN
+                value:
+                  sql: >
+                    SELECT o.id, c.name
+                    FROM orders o
+                    INNER JOIN customers c ON o.customer_id = c.id
+              multi_join:
+                summary: Five-table query with mixed JOINs
+                value:
+                  sql: >
+                    SELECT o.id, c.name, p.title
+                    FROM orders o
+                    INNER JOIN customers c   ON o.customer_id  = c.id
+                    LEFT  JOIN order_items i ON i.order_id     = o.id
+                    LEFT  JOIN products p    ON i.product_id   = p.id
+                    INNER JOIN categories cat ON p.category_id = cat.id
+              with_cte:
+                summary: Query using CTE (WITH clause)
+                value:
+                  sql: >
+                    WITH active_orders AS (
+                      SELECT * FROM orders WHERE status = 'active'
+                    )
+                    SELECT ao.id, c.name
+                    FROM active_orders ao
+                    JOIN customers c ON ao.customer_id = c.id
+              with_subquery:
+                summary: Query with subquery in FROM clause
+                value:
+                  sql: >
+                    SELECT *
+                    FROM (SELECT * FROM orders WHERE status = 'active') o
+                    JOIN customers c ON o.customer_id = c.id
+
+      responses:
+        '200':
+          description: |
+            Query parsed successfully. Returns graph model with nodes and edges.
+            A `warning` field is included when the query has more than 20 tables.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagramResponse'
+              examples:
+                simple_result:
+                  summary: Two-table INNER JOIN result
+                  value:
+                    nodes:
+                      - id: orders
+                        label: "orders (o)"
+                        type: table
+                        backgroundColor: "#ffffff"
+                        innerDiagram: null
+                      - id: customers
+                        label: "customers (c)"
+                        type: table
+                        backgroundColor: "#ffffff"
+                        innerDiagram: null
+                    edges:
+                      - from: orders
+                        to: customers
+                        joinType: INNER
+                        condition: "o.customer_id = c.id"
+                        columns:
+                          - customer_id
+                          - id
+                        color: "#21808d"
+                        lineStyle: solid
+                        bidirectional: false
+                    warning: null
+
+                cte_result:
+                  summary: CTE query result
+                  value:
+                    nodes:
+                      - id: cte_active_orders
+                        label: "active_orders (CTE)"
+                        type: cte
+                        backgroundColor: "#cfe2ff"
+                        innerDiagram: null
+                      - id: customers
+                        label: "customers (c)"
+                        type: table
+                        backgroundColor: "#ffffff"
+                        innerDiagram: null
+                    edges:
+                      - from: cte_active_orders
+                        to: customers
+                        joinType: INNER
+                        condition: "ao.customer_id = c.id"
+                        columns:
+                          - customer_id
+                          - id
+                        color: "#21808d"
+                        lineStyle: solid
+                        bidirectional: false
+                    warning: null
+
+                complexity_warning:
+                  summary: Large query with complexity warning
+                  value:
+                    nodes: []
+                    edges: []
+                    warning: "Very complex query detected (22 tables). Performance may be impacted."
+
+        '400':
+          description: |
+            Query could not be parsed or failed validation.
+            Possible error codes:
+            - `EMPTY_INPUT` — query is null or blank
+            - `QUERY_TOO_LONG` — query exceeds 100,000 characters
+            - `UNSUPPORTED_STATEMENT` — not a SELECT or WITH statement
+            - `PARSE_ERROR` — SQL syntax error detected by JSQLParser
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                syntax_error:
+                  summary: SQL syntax error
+                  value:
+                    error: PARSE_ERROR
+                    message: "Syntax error at line 1, column 15: Expected FROM keyword"
+                    line: 1
+                    column: 15
+                    suggestion: "Did you mean 'FROM' instead of 'FORM'?"
+
+                empty_input:
+                  summary: Empty query submitted
+                  value:
+                    error: EMPTY_INPUT
+                    message: "No SQL query provided. Paste a SELECT query to get started."
+                    line: null
+                    column: null
+                    suggestion: "Try: SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id"
+
+                query_too_long:
+                  summary: Query exceeds character limit
+                  value:
+                    error: QUERY_TOO_LONG
+                    message: "Query is 105,432 characters. Maximum allowed is 100,000 characters."
+                    line: null
+                    column: null
+                    suggestion: "Try splitting the query into smaller parts."
+
+                unsupported_statement:
+                  summary: INSERT statement submitted
+                  value:
+                    error: UNSUPPORTED_STATEMENT
+                    message: "Only SELECT statements are supported."
+                    line: null
+                    column: null
+                    suggestion: "Try analyzing a SELECT query instead."
+
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: INTERNAL_ERROR
+                message: "An unexpected error occurred. Please try again."
+                line: null
+                column: null
+                suggestion: null
+
+components:
+  schemas:
+
+    # ─── Request ───────────────────────────────────────────────────────────────
+
+    SqlAnalyzeRequest:
+      type: object
+      required:
+        - sql
+      properties:
+        sql:
+          type: string
+          description: Raw SQL SELECT query text to analyze
+          minLength: 1
+          maxLength: 100000
+          example: >
+            SELECT o.id, c.name
+            FROM orders o
+            INNER JOIN customers c ON o.customer_id = c.id
+
+    # ─── Response ──────────────────────────────────────────────────────────────
+
+    DiagramResponse:
+      type: object
+      required:
+        - nodes
+        - edges
+      properties:
+        nodes:
+          type: array
+          description: Table nodes extracted from the SQL query
+          items:
+            $ref: '#/components/schemas/NodeDto'
+        edges:
+          type: array
+          description: JOIN edges connecting the table nodes
+          items:
+            $ref: '#/components/schemas/EdgeDto'
+        warning:
+          type: string
+          nullable: true
+          description: |
+            Optional warning message. Present when the query has >20 tables
+            or contains partially supported features.
+          example: "Very complex query detected (22 tables). Performance may be impacted."
+
+    NodeDto:
+      type: object
+      required:
+        - id
+        - label
+        - type
+        - backgroundColor
+      properties:
+        id:
+          type: string
+          description: |
+            Unique node identifier within this diagram.
+            Format varies by type:
+            - Regular table: table name (e.g. `orders`)
+            - CTE: `cte_` prefix + CTE name (e.g. `cte_active_orders`)
+            - Subquery: `subquery_` prefix + alias (e.g. `subquery_o`)
+          example: orders
+        label:
+          type: string
+          description: Human-readable display label shown on the node
+          example: "orders (o)"
+        type:
+          type: string
+          description: Node type determines visual rendering
+          enum:
+            - table
+            - subquery
+            - cte
+          example: table
+        backgroundColor:
+          type: string
+          description: CSS hex color for the node background
+          enum:
+            - "#ffffff"   # table
+            - "#fff3cd"   # subquery
+            - "#cfe2ff"   # cte
+          example: "#ffffff"
+        innerDiagram:
+          $ref: '#/components/schemas/DiagramResponse'
+          nullable: true
+          description: |
+            Nested diagram for subquery and CTE nodes.
+            Null for regular table nodes.
+
+    EdgeDto:
+      type: object
+      required:
+        - from
+        - to
+        - joinType
+        - color
+        - lineStyle
+        - bidirectional
+      properties:
+        from:
+          type: string
+          description: Node ID of the source table (left side of JOIN)
+          example: orders
+        to:
+          type: string
+          description: Node ID of the target table (right side of JOIN)
+          example: customers
+        joinType:
+          type: string
+          description: SQL JOIN type
+          enum:
+            - INNER
+            - LEFT
+            - RIGHT
+            - FULL
+            - CROSS
+          example: LEFT
+        condition:
+          type: string
+          nullable: true
+          description: |
+            The ON condition of the JOIN.
+            Null for CROSS JOINs (no condition).
+          example: "o.customer_id = c.id"
+        columns:
+          type: array
+          description: Column names referenced in the JOIN condition
+          items:
+            type: string
+          example:
+            - customer_id
+            - id
+        color:
+          type: string
+          description: CSS hex color for the edge, determined by JOIN type
+          enum:
+            - "#21808d"   # INNER — teal
+            - "#a84b2f"   # LEFT  — orange
+            - "#6b21a8"   # RIGHT — purple
+            - "#c0152f"   # FULL  — red
+            - "#626c71"   # CROSS — gray
+          example: "#a84b2f"
+        lineStyle:
+          type: string
+          description: SVG stroke-dasharray style for the edge line
+          enum:
+            - solid
+            - dashed
+          example: solid
+        bidirectional:
+          type: boolean
+          description: |
+            True only for FULL OUTER JOIN — renders arrows on both ends of the edge.
+          example: false
+
+    # ─── Error ─────────────────────────────────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - EMPTY_INPUT
+            - QUERY_TOO_LONG
+            - UNSUPPORTED_STATEMENT
+            - PARSE_ERROR
+            - INTERNAL_ERROR
+          example: PARSE_ERROR
+        message:
+          type: string
+          description: Human-readable error description suitable for display in the UI
+          example: "Syntax error at line 1, column 15: Expected FROM keyword"
+        line:
+          type: integer
+          nullable: true
+          description: Line number of the error in the input SQL (1-based). Null if not applicable.
+          example: 1
+        column:
+          type: integer
+          nullable: true
+          description: Column number of the error in the input SQL (1-based). Null if not applicable.
+          example: 15
+        suggestion:
+          type: string
+          nullable: true
+          description: Actionable suggestion to help the user fix the error
+          example: "Did you mean 'FROM' instead of 'FORM'?"

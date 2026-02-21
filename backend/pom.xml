@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Parent is now the SQLens root POM (not spring-boot-starter-parent directly).
+        The root POM inherits from spring-boot-starter-parent, so all Spring Boot
+        dependency management still applies transitively.
+    -->
+    <parent>
+        <groupId>org.buulean</groupId>
+        <artifactId>sqlens</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sqlens-backend</artifactId>
+    <packaging>jar</packaging>
+    <name>SQLens Backend</name>
+    <description>Spring Boot backend — REST API + serves Angular frontend</description>
+
+    <dependencies>
+
+        <!-- ── Spring Boot ─────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Hot reload in dev (excluded from production JAR) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ── SQL Parser ──────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>4.9</version>
+        </dependency>
+
+        <!-- ── Frontend (Angular static resources) ─────────────────────── -->
+        <!--
+            The frontend module packages the Angular dist/ as a JAR.
+            Spring Boot serves anything in META-INF/resources/ on the classpath.
+            This single line embeds the entire Angular app into the fat JAR.
+        -->
+        <dependency>
+            <groupId>org.buulean</groupId>
+            <artifactId>sqlens-frontend</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- ── Utilities ───────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ── Testing ─────────────────────────────────────────────────── -->
+        <!-- Includes: JUnit 5, Mockito, MockMvc, AssertJ, Hamcrest -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!--
+                spring-boot-maven-plugin
+                Creates the executable fat JAR containing:
+                  - Spring Boot application classes
+                  - All dependency JARs (including sqlens-frontend)
+                  - Angular static files (from sqlens-frontend META-INF/resources/)
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

@@ -1,0 +1,29 @@
+# ── Maven ──────────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ── Node / Angular ─────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/cache/
+npm-debug.log*
+
+# ── IDE — IntelliJ ─────────────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ── OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Spring Boot ────────────────────────────────────────────────────
+*.jar
+*.war
+application-local.properties
+application-local.yml
