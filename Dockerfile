@@ -27,8 +27,9 @@ COPY --from=build /build/backend/target/sqlens-backend-*.jar app.jar
 # Expose port (matches server.port in application.properties)
 EXPOSE 8022
 
-# Set JVM options for containerized environment
+# Set JVM options and override default port for containerized environment
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV SERVER_PORT=8022
 
 # Health check via Spring Boot Actuator
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
